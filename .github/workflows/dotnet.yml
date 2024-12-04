@@ -26,4 +26,11 @@ jobs:
       run: dotnet build --no-restore
     - name: Test
       run: dotnet test --no-build --verbosity normal
-    
+    - name: Setup NuGet.exe for use with actions
+      uses: NuGet/setup-nuget@v2.0.0
+      with:
+        nuget-version: 6.x
+        nuget-api-key: ${{ secrets.NUGET_TOKEN }}
+    - name: Publish to nuget.org
+      run: nuget push "Source\bin\Release\FigmaDotNet.*.nupkg" -ApiKey ${{ secrets.NUGET_TOKEN }}
+      
