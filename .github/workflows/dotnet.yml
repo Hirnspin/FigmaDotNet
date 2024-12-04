@@ -23,7 +23,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
     - name: Test
       run: dotnet test --no-build --verbosity normal
     - name: Setup NuGet.exe for use with actions
@@ -32,5 +32,5 @@ jobs:
         nuget-version: 6.x
         nuget-api-key: ${{ secrets.NUGET_TOKEN }}
     - name: Publish to nuget.org
-      run: nuget push -Source "Source\bin\Release\" -ApiKey ${{ secrets.NUGET_TOKEN }}
+      run: nuget push -Source "/home/runner/work/FigmaDotNet/FigmaDotNet/Source/bin/Debug/" -ApiKey ${{ secrets.NUGET_TOKEN }}
       
