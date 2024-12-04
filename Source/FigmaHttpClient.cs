@@ -37,7 +37,6 @@ public sealed class FigmaHttpClient
     private readonly TokenBucketRateLimiter _selectionCostRateLimiter;
     private readonly TokenBucketRateLimiter _recentFilesCostRateLimiter;
 
-    private const string CONFIG_NAME_FIGMA_API_BASE_URL = "FIGMA_API_BASE_URL";
     private const string CONFIG_NAME_FIGMA_API_TOKEN = "FIGMA_API_TOKEN";
     private const int FILE_COST = 50; // Equates to 120 req/min and 24000 req/day per user
     private const int FILE_IMAGE_COST = 20; // Equates to 300 req/min and 60000 req/day per user
@@ -50,8 +49,6 @@ public sealed class FigmaHttpClient
     private const int SELECTION_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
     private const int QUEUE_LIMIT = 400; // Equates to 600 req/min and 120000 req/day per user
-    private const int POLLY_RETRY_COUNT = 3;
-    private const int POLLY_SLEEP_TIME = 2;
 
     public FigmaHttpClient(ILoggerFactory loggerFactory, HttpClient httpClient, IConfiguration configuration)
     {
@@ -67,15 +64,6 @@ public sealed class FigmaHttpClient
             var errorMessage = $"No FIGMA_API_TOKEN was provided! '{CONFIG_NAME_FIGMA_API_TOKEN}'";
             _logger.LogError(errorMessage);
             throw new ConfigurationErrorsException(errorMessage);
-        }
-
-        if (configuration.GetSection(CONFIG_NAME_FIGMA_API_BASE_URL).Exists())
-        {
-            _apiUrl = configuration[CONFIG_NAME_FIGMA_API_BASE_URL];
-        }
-        else
-        {
-            _logger.LogInformation($"No FIGMA_API_BASE_URL was provided, using fallback '{CONFIG_NAME_FIGMA_API_BASE_URL}'");
         }
 
         _fileCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
