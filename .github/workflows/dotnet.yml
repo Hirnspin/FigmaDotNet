@@ -9,28 +9,48 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  NuGetDirectory: ${{ github.workspace}}/nuget
+
 jobs:
-  build:
-
+  build_and_pack:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 9.0.x
+        
     - name: Restore dependencies
       run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore --configuration Release
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
-    - name: Setup NuGet.exe for use with actions
-      uses: NuGet/setup-nuget@v2.0.0
-      with:
-        nuget-version: 6.x
-        nuget-api-key: ${{ secrets.NUGET_TOKEN }}
-    - name: Publish to nuget.org
-      run: nuget push -Source "/home/runner/work/FigmaDotNet/FigmaDotNet/Source/bin/Debug/" -ApiKey ${{ secrets.NUGET_TOKEN }}
       
+    - name: Build
+      run: dotnet pack --no-restore --configuration Release --output ${{ env.NuGetDirectory }}
+      
+    - uses: actions/upload-artifact@v3
+      with:
+        name: nuget
+        if-no-files-found: error
+        retention-days: 7
+        path: ${{ env.NuGetDirectory }}/*.nupkg
+
+  deploy:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    needs: [ build_and_pack ]
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: nuget
+          path: ${{ env.NuGetDirectory }}
+
+      - name: Setup .NET Core
+        uses: actions/setup-dotnet@v4
+
+      - name: Publish NuGet package
+        run: |
+          foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
+              dotnet nuget push $file --api-key "${{ secrets.NUGET_TOKEN }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          }
