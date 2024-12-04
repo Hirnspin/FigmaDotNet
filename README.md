@@ -16,10 +16,11 @@ You have to add a config to your application:
 ```json
 {
   "Values": {
-    "FIGMA_API_TOKEN": "###", // See https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens
+    "FIGMA_API_TOKEN": "###"
   }
 }
 ```
+Check https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens how to get a personal access token in Figma.
 
 ### Further development topics & missing features
 
