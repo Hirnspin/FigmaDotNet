@@ -61,3 +61,11 @@ jobs:
           foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
               dotnet nuget push $file --api-key "${{ secrets.NUGET_TOKEN }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
           }
+
+      - name: Publish GH Package
+        uses: rohan-buechner/publish-gh-package@v1.1.4
+        with:
+          PROJECT_FILE_PATH: ${{ env.NuGetDirectory }}
+          NUGET_KEY: ${{ secrets.GH_PAT }}
+          ORGANISATION: Hirnspin
+                  
