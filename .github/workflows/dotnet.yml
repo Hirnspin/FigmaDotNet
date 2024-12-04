@@ -32,5 +32,5 @@ jobs:
         nuget-version: 6.x
         nuget-api-key: ${{ secrets.NUGET_TOKEN }}
     - name: Publish to nuget.org
-      run: nuget push -Source "Source\bin\Release\FigmaDotNet.*.nupkg" -ApiKey ${{ secrets.NUGET_TOKEN }}
+      run: nuget push -Source "Source\bin\Release\" -ApiKey ${{ secrets.NUGET_TOKEN }}
       
