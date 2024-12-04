@@ -56,6 +56,9 @@ jobs:
       - name: Setup .NET Core
         uses: actions/setup-dotnet@v4
 
+      - name: Add nuget source for github
+        run: dotnet nuget add source --username XmlmXmlmX --password ${{secrets.GH_PAT }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/OWNER/index.json"
+
       - name: Publish NuGet package
         run: |
           foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
