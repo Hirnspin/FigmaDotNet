@@ -57,11 +57,11 @@ jobs:
         uses: actions/setup-dotnet@v4
 
       - name: Add nuget source for github
-        run: dotnet nuget add source --username XmlmXmlmX --password ${{secrets.GH_PAT }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/OWNER/index.json"
+        run: dotnet nuget add source --username XmlmXmlmX --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/Hirnspin/index.json"
 
       - name: Publish NuGet package
         run: |
           foreach($file in (Get-ChildItem "${{ env.NuGetDirectory }}" -Recurse -Include *.nupkg)) {
               dotnet nuget push $file --api-key "${{ secrets.NUGET_TOKEN }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
-              dotnet nuget push $file --api-key "${{ secrets.GH_PAT }}" --source "github"
+              dotnet nuget push $file --source "github"
           }
