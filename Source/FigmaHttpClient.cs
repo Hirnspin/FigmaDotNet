@@ -1,14 +1,11 @@
 ﻿namespace FigmaDotNet;
 
-using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Polly;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
@@ -19,6 +16,8 @@ using System.Threading.Tasks;
 using FigmaDotNet.Enums;
 using FigmaDotNet.Models.Response;
 using FigmaDotNet.Models.Webhook;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Primitives;
 
 public sealed class FigmaHttpClient
 {
@@ -186,16 +185,13 @@ public sealed class FigmaHttpClient
             request.Content = content;
         }
 
-        var retryPolicy = Policy
-            .HandleResult<HttpResponseMessage>(r => r.StatusCode == (HttpStatusCode)429)
-            .WaitAndRetryAsync(POLLY_RETRY_COUNT, retryAttempt => TimeSpan.FromSeconds(Math.Pow(POLLY_SLEEP_TIME, retryAttempt)));
         using var client = new HttpClient();
         while (true)
         {
             using var lease = await _rateLimiter.AcquireAsync(1);
             if (lease.IsAcquired)
             {
-                var response = await retryPolicy.ExecuteAsync(() => client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken));
+                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 if (typeof(T) == typeof(String))
@@ -297,8 +293,7 @@ public sealed class FigmaHttpClient
     FileFormatType format = FileFormatType.svg, bool svgOutlineText = true, bool svgIncludeId = false,
         bool svgIncludeNodeId = false, bool svgSimplifyStroke = true, bool contentsOnly = true, bool useAbsoluteBounds = false, string version = null)
     {
-        var qb = new QueryBuilder
-        {
+        var qb = new Dictionary<string, StringValues> {
             { "ids", ids },
             { "scale", scale.ToString() },
             { "format", format.ToString() },
@@ -314,7 +309,7 @@ public sealed class FigmaHttpClient
             qb.Add("version", version);
         }
 
-        string fetchUrl = $"{_apiUrl}/v1/images/{fileKey}{qb.ToQueryString()}";
+        string fetchUrl = QueryHelpers.AddQueryString($"{_apiUrl}/v1/images/{fileKey}", qb);
         var result = await UseFigmaApiAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken);
 
         return result;
