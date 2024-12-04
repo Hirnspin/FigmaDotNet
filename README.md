@@ -5,15 +5,10 @@ This project provides a http client for dotnet to interact with the [Figma REST 
 
 ### Getting started
 
-Install the Nuget package from nuget.org
+Install the Nuget package from [nuget.org](https://www.nuget.org/packages/FigmaDotNet/) or [github.com](https://github.com/Hirnspin/FigmaDotNet/pkgs/nuget/FigmaDotNet)
 
 ```
-nuget
-```
-
-or from github registry
-
-```
+dotnet add package FigmaDotNet
 ```
 
 You have to add a config to your application:
