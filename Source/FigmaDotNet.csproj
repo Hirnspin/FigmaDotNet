@@ -4,14 +4,16 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>FigmaDotNet</AssemblyName>
     <RootNamespace>FigmaDotNet</RootNamespace>
-    <Title>Figma.Net</Title>
+    <Title>FigmaDotNet</Title>
     <Authors>Sebastian Hösl</Authors>
     <Description>.NET SDK for Figma REST API</Description>
     <PackageProjectUrl>https://hirnsp.in/FigmaDotNet</PackageProjectUrl>
     <PackageIcon>Hirnspin Logo.png</PackageIcon>
-    <RepositoryUrl>https://github.com/XmlmXmlmX/Figma.Net</RepositoryUrl>
+    <RepositoryUrl>https://github.com/XmlmXmlmX/FigmaDotNet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>Figma, Design, Icons</PackageTags>
+    <SignAssembly>False</SignAssembly>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
