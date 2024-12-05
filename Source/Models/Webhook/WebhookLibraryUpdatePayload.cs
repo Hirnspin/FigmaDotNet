@@ -57,13 +57,5 @@ public class UpdateElement
 
     [JsonPropertyName("name")]
     public string Name { get; set; }
-
-    public string InternalName
-    {
-        get
-        {
-            return StringHelper.ConvertToPascalCase(Name);
-        }
-    }
 }
 
