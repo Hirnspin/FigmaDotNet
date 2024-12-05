@@ -5,26 +5,22 @@ This project provides a http client for dotnet to interact with the [Figma REST 
 
 ### Getting started
 
-Install the Nuget package from nuget.org
+Install the Nuget package from [nuget.org](https://www.nuget.org/packages/FigmaDotNet/) or [github.com](https://github.com/Hirnspin/FigmaDotNet/pkgs/nuget/FigmaDotNet)
 
-```
-nuget
-```
-
-or from github registry
-
-```
+```bash
+dotnet add package FigmaDotNet
 ```
 
 You have to add a config to your application:
 
-```
+```json
 {
   "Values": {
-    "FIGMA_API_TOKEN": "###", // See https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens
+    "FIGMA_API_TOKEN": "###"
   }
 }
 ```
+Check https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens how to get a personal access token in Figma.
 
 ### Further development topics & missing features
 
