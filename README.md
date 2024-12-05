@@ -32,3 +32,7 @@ You have to add a config to your application:
 - Only .Net 9 is supported.
 - Missing documentation.
 - Rate limit customization in config.
+
+### Change log
+
+v1.1.0: Removed property `InternalName` from `FigmaComponent.cs`.

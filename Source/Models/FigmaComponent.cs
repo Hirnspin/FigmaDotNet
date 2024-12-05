@@ -34,10 +34,4 @@ public class FigmaComponent
 
     [JsonPropertyName("user")]
     public User User { get; set; }
-
-    public string InternalName { get
-        {
-            return StringHelper.ConvertToPascalCase(Name);
-        }
-    }
 }
