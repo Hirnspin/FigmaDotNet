@@ -1,5 +1,6 @@
 namespace FigmaDotNet.Models.Response;
 
+using FigmaDotNet.Models;
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
@@ -24,6 +25,9 @@ public class FileResponse : FigmaResponse
     [JsonPropertyName("version")]
     public string Version { get; set; }
 
+    [JsonPropertyName("document")]
+    public DocumentNode Document { get; set; }
+
     [JsonPropertyName("components")]
     public IDictionary<string, FigmaComponent> Components { get; set; }
 
@@ -40,5 +44,5 @@ public class FileResponse : FigmaResponse
     public string MainFileKey { get; set; }
 
     [JsonPropertyName("branches")]
-    public IEnumerable<dynamic> Branches { get; set; }
+    public IEnumerable<Branch> Branches { get; set; }
 }
