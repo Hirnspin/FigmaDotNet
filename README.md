@@ -31,6 +31,9 @@ Check https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-acc
 
 ### Change log
 
+#### v1.1.1:
+- Extend `FileResponse` with `Branches` and `Document` properties.
+
 #### v1.1.0:
 - Removed property `InternalName` from `FigmaComponent`.
 - Removed property `InternalName` from `WebhookLibraryUpdatePayload`.
