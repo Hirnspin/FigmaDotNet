@@ -54,6 +54,7 @@ public sealed class FigmaHttpClient
     {
         _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
         _httpClient = httpClient;
+        _httpClient.BaseAddress = new Uri(_apiUrl);
 
         if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
         {
@@ -173,13 +174,12 @@ public sealed class FigmaHttpClient
             request.Content = content;
         }
 
-        using var client = new HttpClient();
         while (true)
         {
             using var lease = await _rateLimiter.AcquireAsync(1);
             if (lease.IsAcquired)
             {
-                var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 if (typeof(T) == typeof(String))
@@ -200,7 +200,7 @@ public sealed class FigmaHttpClient
 
     public async Task<CommentsResponse> GetCommentsAsync(string fileKey, CancellationToken cancellationToken)
     {
-        string fetchUrl = $"{_apiUrl}/v1/files/{fileKey}/comments";
+        string fetchUrl = $"/v1/files/{fileKey}/comments";
         var result = await UseFigmaApiAsync<CommentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
@@ -214,7 +214,7 @@ public sealed class FigmaHttpClient
     /// <param name="cancellationToken"></param>
     public async Task<ComponentResponse> GetComponentAsync(string key, CancellationToken cancellationToken)
     {
-        string fetchUrl = $"{_apiUrl}/v1/components/{key}";
+        string fetchUrl = $"/v1/components/{key}";
         var result = await UseFigmaApiAsync<ComponentResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
@@ -222,7 +222,7 @@ public sealed class FigmaHttpClient
 
     public async Task<ComponentsResponse> GetFileComponentsAsync(string fileKey, CancellationToken cancellationToken)
     {
-        string fetchUrl = $"{_apiUrl}/v1/files/{fileKey}/components";
+        string fetchUrl = $"/v1/files/{fileKey}/components";
         var result = await UseFigmaApiAsync<ComponentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
@@ -236,7 +236,7 @@ public sealed class FigmaHttpClient
     /// <param name="cancellationToken"></param>
     public async Task<ComponentSetsResponse> GetFileComponentSetsAsync(string fileKey, CancellationToken cancellationToken)
     {
-        string fetchUrl = $"{_apiUrl}/v1/files/{fileKey}/component_sets";
+        string fetchUrl = $"/v1/files/{fileKey}/component_sets";
         var result = await UseFigmaApiAsync<ComponentSetsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
@@ -244,7 +244,7 @@ public sealed class FigmaHttpClient
 
     public async Task<FileResponse> GetFileAsync(string fileKey, CancellationToken cancellationToken, int depth = 2)
     {
-        string fetchUrl = $"{_apiUrl}/v1/files/{fileKey}?depth={depth}";
+        string fetchUrl = $"/v1/files/{fileKey}?depth={depth}";
         var result = await UseFigmaApiAsync<FileResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
@@ -297,7 +297,7 @@ public sealed class FigmaHttpClient
             qb.Add("version", version);
         }
 
-        string fetchUrl = QueryHelpers.AddQueryString($"{_apiUrl}/v1/images/{fileKey}", qb);
+        string fetchUrl = QueryHelpers.AddQueryString($"/v1/images/{fileKey}", qb);
         var result = await UseFigmaApiAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken);
 
         return result;
@@ -329,7 +329,7 @@ public sealed class FigmaHttpClient
 
     public async Task<bool> DeleteWebhookAsync(string id, CancellationToken cancellationToken = default)
     {
-        string fetchUrl = $"{_apiUrl}/v2/webhooks/{id}";
+        string fetchUrl = $"/v2/webhooks/{id}";
         var result = await UseFigmaApiAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Delete);
 
         _logger.LogInformation($"Done with result: '{result}'");
@@ -338,7 +338,7 @@ public sealed class FigmaHttpClient
 
     public async Task<IEnumerable<WebHookV2>> GetTeamWebhooksAsync(string teamId, CancellationToken cancellationToken = default)
     {
-        string fetchUrl = $"{_apiUrl}/v2/teams/{teamId}/webhooks";
+        string fetchUrl = $"/v2/teams/{teamId}/webhooks";
         var webHookList = await UseFigmaApiAsync<WebHookListV2>(fetchUrl, _webhookCostRateLimiter, cancellationToken);
 
         if (webHookList?.WebHooks.Count() > 0)
@@ -362,7 +362,7 @@ public sealed class FigmaHttpClient
     /// <see cref="https://www.figma.com/developers/api#webhooks-v2-post-endpoint"/>
     public async Task PostWebhookAsync(WebHook requestPayload, CancellationToken cancellationToken = default)
     {
-        string fetchUrl = $"{_apiUrl}/v2/webhooks";
+        string fetchUrl = $"/v2/webhooks";
         var content = new StringContent(JsonSerializer.Serialize(requestPayload), Encoding.UTF8, "application/json");
         var result = await UseFigmaApiAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Post, content);
 
