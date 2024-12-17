@@ -18,6 +18,7 @@ using FigmaDotNet.Models.Response;
 using FigmaDotNet.Models.Webhook;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Primitives;
+using System.Xml.Linq;
 
 public sealed class FigmaHttpClient
 {
@@ -336,9 +337,38 @@ public sealed class FigmaHttpClient
 
         string imageUrl = imgResponse.Images.First(i => i.Key == ids).Value;
 
-        var response = await _httpClient.GetAsync(imageUrl);
+        HttpResponseMessage response = await _httpClient.GetAsync(imageUrl);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync();
+        string svgSource = await response.Content.ReadAsStringAsync();
+
+        if (!IsValidSvg(svgSource))
+        {
+            _logger.LogWarning($"Invalid SVG from server! We try again!");
+            response = await _httpClient.GetAsync(imageUrl);
+            response.EnsureSuccessStatusCode();
+            svgSource = await response.Content.ReadAsStringAsync();
+        }
+
+        if (!IsValidSvg(svgSource))
+        {
+            _logger.LogError("Invalid svg source from server!");
+            return null;
+        }
+
+        return svgSource;
+    }
+
+    private bool IsValidSvg (string source)
+    {
+        try
+        {
+            XDocument.Parse(source);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
     public async Task<bool> DeleteWebhookAsync(string id, CancellationToken cancellationToken = default)
