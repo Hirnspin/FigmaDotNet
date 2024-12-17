@@ -336,18 +336,7 @@ public sealed class FigmaHttpClient
         }
 
         string imageUrl = imgResponse.Images.First(i => i.Key == ids).Value;
-
-        HttpResponseMessage response = await _httpClient.GetAsync(imageUrl);
-        response.EnsureSuccessStatusCode();
-        string svgSource = await response.Content.ReadAsStringAsync();
-
-        if (!IsValidSvg(svgSource))
-        {
-            _logger.LogWarning($"Invalid SVG from server! We try again!");
-            response = await _httpClient.GetAsync(imageUrl);
-            response.EnsureSuccessStatusCode();
-            svgSource = await response.Content.ReadAsStringAsync();
-        }
+        string svgSource = await UseFigmaApiAsync<string>(imageUrl, _fileImageCostRateLimiter, cancellationToken);
 
         if (!IsValidSvg(svgSource))
         {
