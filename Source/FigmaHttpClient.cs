@@ -164,37 +164,51 @@ public sealed class FigmaHttpClient
         if (httpMethod == null)
         {
             httpMethod = HttpMethod.Get;
+            _logger.LogTrace($"No HTTP method was provided, proceed {httpMethod.Method} method.");
         }
 
+        _logger.LogTrace($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
         using var request = new HttpRequestMessage(httpMethod, fetchUrl);
         request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
 
         if (content != null)
         {
+            _logger.LogTrace($"Set request content.");
             request.Content = content;
         }
 
-        while (true)
+        _logger.LogTrace($"Start rate limiter.");
+        try
         {
-            using var lease = await _rateLimiter.AcquireAsync(1);
-            if (lease.IsAcquired)
+            while (true)
             {
-                var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                response.EnsureSuccessStatusCode();
-
-                if (typeof(T) == typeof(String))
+                using var lease = await _rateLimiter.AcquireAsync(1);
+                if (lease.IsAcquired)
                 {
-                    var stringResult = await response.Content.ReadAsStringAsync();
-                    return (T)Convert.ChangeType(stringResult, typeof(T));
-                }
+                    _logger.LogTrace($"Send request.");
+                    var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                    response.EnsureSuccessStatusCode();
 
-                var result = await response.Content.ReadFromJsonAsync<T>();
-                return result;
+                    if (typeof(T) == typeof(String))
+                    {
+                        var stringResult = await response.Content.ReadAsStringAsync();
+                        return (T)Convert.ChangeType(stringResult, typeof(T));
+                    }
+
+                    var result = await response.Content.ReadFromJsonAsync<T>();
+                    return result;
+                }
+                else
+                {
+                    _logger.LogTrace($"Wait 1 minute until next request.");
+                    await Task.Delay(TimeSpan.FromMinutes(1));
+                }
             }
-            else
-            {
-                await Task.Delay(TimeSpan.FromMinutes(1));
-            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"{httpMethod.Method} request to '{fetchUrl}' failed!\n{ex.StackTrace}");
+            throw;
         }
     }
 
