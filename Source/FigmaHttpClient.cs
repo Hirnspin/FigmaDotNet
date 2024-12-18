@@ -235,7 +235,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<CommentsResponse> GetCommentsAsync(string fileKey, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/files/{fileKey}/comments";
-        var result = await RateLimitedFigmaApiCallAsync<CommentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<CommentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -249,7 +249,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<ComponentResponse> GetComponentAsync(string key, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/components/{key}";
-        var result = await RateLimitedFigmaApiCallAsync<ComponentResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ComponentResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -257,7 +257,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<ComponentsResponse> GetFileComponentsAsync(string fileKey, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/files/{fileKey}/components";
-        var result = await RateLimitedFigmaApiCallAsync<ComponentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ComponentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -271,7 +271,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<ComponentSetsResponse> GetFileComponentSetsAsync(string fileKey, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/files/{fileKey}/component_sets";
-        var result = await RateLimitedFigmaApiCallAsync<ComponentSetsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ComponentSetsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -279,7 +279,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<FileResponse> GetFileAsync(string fileKey, CancellationToken cancellationToken, int depth = 2)
     {
         string fetchUrl = $"/v1/files/{fileKey}?depth={depth}";
-        var result = await RateLimitedFigmaApiCallAsync<FileResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<FileResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -332,7 +332,7 @@ public sealed class FigmaHttpClient: IDisposable
         }
 
         string fetchUrl = QueryHelpers.AddQueryString($"/v1/images/{fileKey}", qb);
-        var result = await RateLimitedFigmaApiCallAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
@@ -363,7 +363,7 @@ public sealed class FigmaHttpClient: IDisposable
         bool svgIncludeNodeId = false, bool svgSimplifyStroke = true, bool contentsOnly = true, bool useAbsoluteBounds = false, string version = null)
     {
         string imageUrl = await GetSvgUrlAsync(fileKey, ids, cancellationToken, scale, svgOutlineText, svgIncludeId, svgIncludeNodeId, svgSimplifyStroke, contentsOnly, useAbsoluteBounds, version);
-        string svgSource = await RateLimitedFigmaApiCallAsync<string>(imageUrl, _fileImageCostRateLimiter, cancellationToken);
+        string svgSource = await RateLimitedFigmaApiCallAsync<string>(imageUrl, _fileImageCostRateLimiter, cancellationToken: cancellationToken);
 
         if (!IsValidSvg(svgSource))
         {
@@ -390,7 +390,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<bool> DeleteWebhookAsync(string id, CancellationToken cancellationToken = default)
     {
         string fetchUrl = $"/v2/webhooks/{id}";
-        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Delete);
+        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter,  HttpMethod.Delete, cancellationToken: cancellationToken);
 
         _logger.LogInformation($"Done with result: '{result}'");
         return true;
@@ -399,7 +399,7 @@ public sealed class FigmaHttpClient: IDisposable
     public async Task<IEnumerable<WebHookV2>> GetTeamWebhooksAsync(string teamId, CancellationToken cancellationToken = default)
     {
         string fetchUrl = $"/v2/teams/{teamId}/webhooks";
-        var webHookList = await RateLimitedFigmaApiCallAsync<WebHookListV2>(fetchUrl, _webhookCostRateLimiter, cancellationToken);
+        var webHookList = await RateLimitedFigmaApiCallAsync<WebHookListV2>(fetchUrl, _webhookCostRateLimiter, cancellationToken: cancellationToken);
 
         if (webHookList?.WebHooks.Count() > 0)
         {
@@ -424,7 +424,7 @@ public sealed class FigmaHttpClient: IDisposable
     {
         string fetchUrl = $"/v2/webhooks";
         var content = new StringContent(JsonSerializer.Serialize(requestPayload), Encoding.UTF8, "application/json");
-        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Post, content);
+        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter, HttpMethod.Post, content, cancellationToken);
 
         _logger.LogInformation($"Webhook was created: {result}");
     }
