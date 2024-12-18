@@ -318,7 +318,7 @@ public sealed class FigmaHttpClient
         return result;
     }
 
-    public async Task<string> GetSvgSourceAsync(string fileKey, string ids, CancellationToken cancellationToken = default, float scale = 1, bool svgOutlineText = true, bool svgIncludeId = false,
+    public async Task<string> GetSvgUrlAsync(string fileKey, string ids, CancellationToken cancellationToken = default, float scale = 1, bool svgOutlineText = true, bool svgIncludeId = false,
         bool svgIncludeNodeId = false, bool svgSimplifyStroke = true, bool contentsOnly = true, bool useAbsoluteBounds = false, string version = null)
     {
         ImageResponse imgResponse = await GetImageAsync(fileKey, ids, cancellationToken, scale, FileFormatType.svg, svgOutlineText, svgIncludeId, svgIncludeNodeId, svgSimplifyStroke, contentsOnly, useAbsoluteBounds, version);
@@ -336,6 +336,14 @@ public sealed class FigmaHttpClient
         }
 
         string imageUrl = imgResponse.Images.First(i => i.Key == ids).Value;
+
+        return imageUrl;
+    }
+
+    public async Task<string> GetSvgSourceAsync(string fileKey, string ids, CancellationToken cancellationToken = default, float scale = 1, bool svgOutlineText = true, bool svgIncludeId = false,
+        bool svgIncludeNodeId = false, bool svgSimplifyStroke = true, bool contentsOnly = true, bool useAbsoluteBounds = false, string version = null)
+    {
+        string imageUrl = await GetSvgUrlAsync(fileKey, ids, cancellationToken, scale, svgOutlineText, svgIncludeId, svgIncludeNodeId, svgSimplifyStroke, contentsOnly, useAbsoluteBounds, version);
         string svgSource = await UseFigmaApiAsync<string>(imageUrl, _fileImageCostRateLimiter, cancellationToken);
 
         if (!IsValidSvg(svgSource))
