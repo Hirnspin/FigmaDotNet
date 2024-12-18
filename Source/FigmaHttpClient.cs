@@ -1,7 +1,5 @@
 ﻿namespace FigmaDotNet;
 
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
@@ -13,14 +11,21 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.RateLimiting;
 using System.Threading.Tasks;
+using System.Xml.Linq;
+
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Primitives;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+using Polly;
+using Polly.Retry;
+
 using FigmaDotNet.Enums;
 using FigmaDotNet.Models.Response;
 using FigmaDotNet.Models.Webhook;
-using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.Extensions.Primitives;
-using System.Xml.Linq;
 
-public sealed class FigmaHttpClient
+public sealed class FigmaHttpClient: IDisposable
 {
     private readonly ILogger<FigmaHttpClient> _logger;
     private readonly HttpClient _httpClient;
@@ -37,6 +42,7 @@ public sealed class FigmaHttpClient
     private readonly TokenBucketRateLimiter _fileImageCostRateLimiter;
     private readonly TokenBucketRateLimiter _selectionCostRateLimiter;
     private readonly TokenBucketRateLimiter _recentFilesCostRateLimiter;
+    private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
 
     private const string CONFIG_NAME_FIGMA_API_TOKEN = "FIGMA_API_TOKEN";
     private const int FILE_COST = 50; // Equates to 120 req/min and 24000 req/day per user
@@ -49,13 +55,18 @@ public sealed class FigmaHttpClient
     private const int TEAM_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int SELECTION_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
-    private const int QUEUE_LIMIT = 400; // Equates to 600 req/min and 120000 req/day per user
 
     public FigmaHttpClient(ILoggerFactory loggerFactory, HttpClient httpClient, IConfiguration configuration)
     {
         _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
         _httpClient = httpClient;
         _httpClient.BaseAddress = new Uri(_apiUrl);
+        _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                (result, timeSpan, retryCount, context) =>
+                {
+                    Console.WriteLine($"Retry {retryCount} due to {result.Result.StatusCode}. Waiting {timeSpan} before next retry.");
+                });
 
         if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
         {
@@ -73,8 +84,7 @@ public sealed class FigmaHttpClient
             TokenLimit = FILE_COST,
             TokensPerPeriod = FILE_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _imageCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -82,8 +92,7 @@ public sealed class FigmaHttpClient
             TokenLimit = IMAGE_COST,
             TokensPerPeriod = IMAGE_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _versionCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -91,8 +100,7 @@ public sealed class FigmaHttpClient
             TokenLimit = VERSION_COST,
             TokensPerPeriod = VERSION_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _commentCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -100,8 +108,7 @@ public sealed class FigmaHttpClient
             TokenLimit = COMMENT_COST,
             TokensPerPeriod = COMMENT_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _webhookCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -109,8 +116,7 @@ public sealed class FigmaHttpClient
             TokenLimit = WEBHOOK_COST,
             TokensPerPeriod = WEBHOOK_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _teamCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -118,8 +124,7 @@ public sealed class FigmaHttpClient
             TokenLimit = TEAM_COST,
             TokensPerPeriod = TEAM_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _projectCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -127,8 +132,7 @@ public sealed class FigmaHttpClient
             TokenLimit = PROJECT_COST,
             TokensPerPeriod = PROJECT_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _fileImageCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -136,8 +140,7 @@ public sealed class FigmaHttpClient
             TokenLimit = FILE_IMAGE_COST,
             TokensPerPeriod = FILE_IMAGE_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _selectionCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -145,8 +148,7 @@ public sealed class FigmaHttpClient
             TokenLimit = SELECTION_COST,
             TokensPerPeriod = SELECTION_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
 
         _recentFilesCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
@@ -154,69 +156,86 @@ public sealed class FigmaHttpClient
             TokenLimit = RECENT_FILES_COST,
             TokensPerPeriod = RECENT_FILES_COST,
             ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = QUEUE_LIMIT
+            AutoReplenishment = true
         });
     }
 
-    private async Task<T> UseFigmaApiAsync<T>(string fetchUrl, TokenBucketRateLimiter _rateLimiter, CancellationToken cancellationToken = default, 
-        HttpMethod httpMethod = null, HttpContent content = null)
+    private async Task<T> RateLimitedFigmaApiCallAsync<T>(string fetchUrl, TokenBucketRateLimiter _rateLimiter, HttpMethod httpMethod = null, HttpContent content = null, CancellationToken cancellationToken = default)
     {
+        T result = default(T);
+
         if (httpMethod == null)
         {
             httpMethod = HttpMethod.Get;
-            _logger.LogTrace($"No HTTP method was provided, proceed {httpMethod.Method} method.");
+            _logger.LogInformation($"No HTTP method was provided, proceed {httpMethod.Method} method.");
         }
 
-        _logger.LogTrace($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
+        _logger.LogInformation($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
         using var request = new HttpRequestMessage(httpMethod, fetchUrl);
         request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
 
         if (content != null)
         {
-            _logger.LogTrace($"Set request content.");
+            _logger.LogInformation($"Set request content.");
             request.Content = content;
         }
 
-        _logger.LogTrace($"Start rate limiter.");
-        try
+        _logger.LogInformation($"Start rate limiter.");
+
+        var lease = await _rateLimiter.AcquireAsync(1, cancellationToken);
+        if (lease.IsAcquired)
         {
-            while (true)
+            try
             {
-                using var lease = await _rateLimiter.AcquireAsync(1);
-                if (lease.IsAcquired)
+                _logger.LogInformation($"Send request.");
+                HttpResponseMessage response = await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    _logger.LogTrace($"Send request.");
-                    var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    response.EnsureSuccessStatusCode();
+                    return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                });
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("API call succeeded.");
 
                     if (typeof(T) == typeof(String))
                     {
-                        var stringResult = await response.Content.ReadAsStringAsync();
-                        return (T)Convert.ChangeType(stringResult, typeof(T));
+                        var stringResult = await response.Content.ReadAsStringAsync(cancellationToken);
+                        result = (T)Convert.ChangeType(stringResult, typeof(T));
                     }
 
-                    var result = await response.Content.ReadFromJsonAsync<T>();
-                    return result;
+                    result = await response.Content.ReadFromJsonAsync<T>(cancellationToken);
                 }
                 else
                 {
-                    _logger.LogTrace($"Wait 1 minute until next request.");
-                    await Task.Delay(TimeSpan.FromMinutes(1));
+                    _logger.LogError("API call failed after retries.");
                 }
             }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogWarning($"{httpMethod.Method} request to '{_apiUrl}/{fetchUrl}' failed!\n{ex.StackTrace}");
+                _logger.LogError($"{ex.Message}");
+                _logger.LogTrace($"{ex.StackTrace}");
+
+                throw;
+            }
+            finally
+            {
+                lease.Dispose();
+            }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError($"{httpMethod.Method} request to '{fetchUrl}' failed!\n{ex.StackTrace}");
-            throw;
+            _logger.LogTrace($"Wait 1 minute until next request.");
+            await Task.Delay(TimeSpan.FromMinutes(1));
         }
+
+        return result;
     }
 
     public async Task<CommentsResponse> GetCommentsAsync(string fileKey, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/files/{fileKey}/comments";
-        var result = await UseFigmaApiAsync<CommentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<CommentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
     }
@@ -230,7 +249,7 @@ public sealed class FigmaHttpClient
     public async Task<ComponentResponse> GetComponentAsync(string key, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/components/{key}";
-        var result = await UseFigmaApiAsync<ComponentResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ComponentResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
     }
@@ -238,7 +257,7 @@ public sealed class FigmaHttpClient
     public async Task<ComponentsResponse> GetFileComponentsAsync(string fileKey, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/files/{fileKey}/components";
-        var result = await UseFigmaApiAsync<ComponentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ComponentsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
     }
@@ -252,7 +271,7 @@ public sealed class FigmaHttpClient
     public async Task<ComponentSetsResponse> GetFileComponentSetsAsync(string fileKey, CancellationToken cancellationToken)
     {
         string fetchUrl = $"/v1/files/{fileKey}/component_sets";
-        var result = await UseFigmaApiAsync<ComponentSetsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ComponentSetsResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
     }
@@ -260,7 +279,7 @@ public sealed class FigmaHttpClient
     public async Task<FileResponse> GetFileAsync(string fileKey, CancellationToken cancellationToken, int depth = 2)
     {
         string fetchUrl = $"/v1/files/{fileKey}?depth={depth}";
-        var result = await UseFigmaApiAsync<FileResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<FileResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken);
 
         return result;
     }
@@ -313,7 +332,7 @@ public sealed class FigmaHttpClient
         }
 
         string fetchUrl = QueryHelpers.AddQueryString($"/v1/images/{fileKey}", qb);
-        var result = await UseFigmaApiAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken);
 
         return result;
     }
@@ -344,7 +363,7 @@ public sealed class FigmaHttpClient
         bool svgIncludeNodeId = false, bool svgSimplifyStroke = true, bool contentsOnly = true, bool useAbsoluteBounds = false, string version = null)
     {
         string imageUrl = await GetSvgUrlAsync(fileKey, ids, cancellationToken, scale, svgOutlineText, svgIncludeId, svgIncludeNodeId, svgSimplifyStroke, contentsOnly, useAbsoluteBounds, version);
-        string svgSource = await UseFigmaApiAsync<string>(imageUrl, _fileImageCostRateLimiter, cancellationToken);
+        string svgSource = await RateLimitedFigmaApiCallAsync<string>(imageUrl, _fileImageCostRateLimiter, cancellationToken);
 
         if (!IsValidSvg(svgSource))
         {
@@ -371,7 +390,7 @@ public sealed class FigmaHttpClient
     public async Task<bool> DeleteWebhookAsync(string id, CancellationToken cancellationToken = default)
     {
         string fetchUrl = $"/v2/webhooks/{id}";
-        var result = await UseFigmaApiAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Delete);
+        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Delete);
 
         _logger.LogInformation($"Done with result: '{result}'");
         return true;
@@ -380,7 +399,7 @@ public sealed class FigmaHttpClient
     public async Task<IEnumerable<WebHookV2>> GetTeamWebhooksAsync(string teamId, CancellationToken cancellationToken = default)
     {
         string fetchUrl = $"/v2/teams/{teamId}/webhooks";
-        var webHookList = await UseFigmaApiAsync<WebHookListV2>(fetchUrl, _webhookCostRateLimiter, cancellationToken);
+        var webHookList = await RateLimitedFigmaApiCallAsync<WebHookListV2>(fetchUrl, _webhookCostRateLimiter, cancellationToken);
 
         if (webHookList?.WebHooks.Count() > 0)
         {
@@ -405,8 +424,22 @@ public sealed class FigmaHttpClient
     {
         string fetchUrl = $"/v2/webhooks";
         var content = new StringContent(JsonSerializer.Serialize(requestPayload), Encoding.UTF8, "application/json");
-        var result = await UseFigmaApiAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Post, content);
+        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter, cancellationToken, HttpMethod.Post, content);
 
         _logger.LogInformation($"Webhook was created: {result}");
+    }
+
+    public void Dispose()
+    {
+        _commentCostRateLimiter.Dispose();
+        _fileCostRateLimiter.Dispose();
+        _fileImageCostRateLimiter.Dispose();
+        _imageCostRateLimiter.Dispose();
+        _projectCostRateLimiter.Dispose();
+        _recentFilesCostRateLimiter.Dispose();
+        _selectionCostRateLimiter.Dispose();
+        _teamCostRateLimiter.Dispose();
+        _versionCostRateLimiter.Dispose();
+        _webhookCostRateLimiter.Dispose();
     }
 }
