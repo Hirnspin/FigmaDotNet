@@ -170,16 +170,6 @@ public sealed class FigmaHttpClient: IDisposable
             _logger.LogInformation($"No HTTP method was provided, proceed {httpMethod.Method} method.");
         }
 
-        _logger.LogInformation($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
-        using var request = new HttpRequestMessage(httpMethod, fetchUrl);
-        request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
-
-        if (content != null)
-        {
-            _logger.LogInformation($"Set request content.");
-            request.Content = content;
-        }
-
         _logger.LogInformation($"Start rate limiter.");
 
         var lease = await _rateLimiter.AcquireAsync(1, cancellationToken);
@@ -190,6 +180,15 @@ public sealed class FigmaHttpClient: IDisposable
                 _logger.LogInformation($"Send request.");
                 HttpResponseMessage response = await _retryPolicy.ExecuteAsync(async () =>
                 {
+                    _logger.LogInformation($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
+                    using var request = new HttpRequestMessage(httpMethod, fetchUrl);
+                    request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
+
+                    if (content != null)
+                    {
+                        _logger.LogInformation($"Set request content.");
+                        request.Content = content;
+                    }
                     return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 });
 
