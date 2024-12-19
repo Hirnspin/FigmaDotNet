@@ -14,7 +14,7 @@
     <PackageTags>Figma, Design, Icons</PackageTags>
     <SignAssembly>False</SignAssembly>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <Version>1.2.5</Version>
+    <Version>1.2.6</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
@@ -22,13 +22,6 @@
     <Compile Remove="Models\Request\**" />
     <EmbeddedResource Remove="Models\Request\**" />
     <None Remove="Models\Request\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
   </ItemGroup>
 
   <ItemGroup>

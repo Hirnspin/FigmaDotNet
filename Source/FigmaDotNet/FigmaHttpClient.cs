@@ -62,11 +62,11 @@ public sealed class FigmaHttpClient: IDisposable
         _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
         _httpClient = new HttpClient();
         _httpClient.BaseAddress = new Uri(_apiUrl);
-        _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+        _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode || r.Content == null)
             .WaitAndRetryAsync(retryAmount, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (result, timeSpan, retryCount, context) =>
                 {
-                    _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode}. Waiting {timeSpan} before next retry.");
+                    _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode.ToString() ?? "null content"}. Waiting {timeSpan} before next retry.");
                 });
 
         if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
