@@ -55,14 +55,15 @@ public sealed class FigmaHttpClient: IDisposable
     private const int TEAM_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int SELECTION_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
+    private const int RETRY_AMOUNT = 10;
 
-    public FigmaHttpClient(ILoggerFactory loggerFactory, IConfiguration configuration)
+    public FigmaHttpClient(ILoggerFactory loggerFactory, IConfiguration configuration, int retryAmount = RETRY_AMOUNT)
     {
         _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
         _httpClient = new HttpClient();
         _httpClient.BaseAddress = new Uri(_apiUrl);
         _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
-            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            .WaitAndRetryAsync(retryAmount, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (result, timeSpan, retryCount, context) =>
                 {
                     _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode}. Waiting {timeSpan} before next retry.");
