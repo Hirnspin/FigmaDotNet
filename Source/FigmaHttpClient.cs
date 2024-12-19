@@ -330,7 +330,7 @@ public sealed class FigmaHttpClient: IDisposable
         }
 
         string fetchUrl = QueryHelpers.AddQueryString($"/v1/images/{fileKey}", qb);
-        var result = await RateLimitedFigmaApiCallAsync<ImageResponse>(fetchUrl, _imageCostRateLimiter, cancellationToken: cancellationToken);
+        var result = await RateLimitedFigmaApiCallAsync<ImageResponse>(fetchUrl, _fileImageCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
     }
