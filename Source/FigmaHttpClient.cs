@@ -56,10 +56,10 @@ public sealed class FigmaHttpClient: IDisposable
     private const int SELECTION_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
 
-    public FigmaHttpClient(ILoggerFactory loggerFactory, HttpClient httpClient, IConfiguration configuration)
+    public FigmaHttpClient(ILoggerFactory loggerFactory, IConfiguration configuration)
     {
         _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
-        _httpClient = httpClient;
+        _httpClient = new HttpClient();
         _httpClient.BaseAddress = new Uri(_apiUrl);
         _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
             .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
@@ -160,35 +160,33 @@ public sealed class FigmaHttpClient: IDisposable
         });
     }
 
-    private async Task<T> RateLimitedFigmaApiCallAsync<T>(string fetchUrl, TokenBucketRateLimiter _rateLimiter, HttpMethod httpMethod = null, HttpContent content = null, CancellationToken cancellationToken = default)
+    private async Task<T> RateLimitedFigmaApiCallAsync<T>(string fetchUrl, TokenBucketRateLimiter rateLimiter, HttpMethod httpMethod = null, HttpContent content = null, CancellationToken cancellationToken = default)
     {
-        T result = default(T);
+        T result = default;
 
-        if (httpMethod == null)
-        {
-            httpMethod = HttpMethod.Get;
-            _logger.LogInformation($"No HTTP method was provided, proceed {httpMethod.Method} method.");
-        }
+        httpMethod ??= HttpMethod.Get;
+        _logger.LogInformation($"Proceeding with {httpMethod.Method} method.");
 
-        _logger.LogInformation($"Start rate limiter.");
+        _logger.LogInformation("Starting rate limiter.");
 
-        var lease = await _rateLimiter.AcquireAsync(1, cancellationToken);
+        var lease = await rateLimiter.AcquireAsync(1, cancellationToken);
         if (lease.IsAcquired)
         {
             try
             {
-                _logger.LogInformation($"Send request.");
+                _logger.LogInformation("Sending request.");
                 HttpResponseMessage response = await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    _logger.LogInformation($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
-                    using HttpRequestMessage request = new (httpMethod, fetchUrl);
+                    _logger.LogInformation($"Creating {httpMethod.Method} request message for '{fetchUrl}'.");
+                    using var request = new HttpRequestMessage(httpMethod, fetchUrl);
                     request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
 
                     if (content != null)
                     {
-                        _logger.LogInformation($"Set request content.");
+                        _logger.LogInformation("Setting request content.");
                         request.Content = content;
                     }
+
                     return await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 });
 
@@ -196,7 +194,7 @@ public sealed class FigmaHttpClient: IDisposable
                 {
                     _logger.LogInformation("API call succeeded.");
 
-                    if (typeof(T) == typeof(String))
+                    if (typeof(T) == typeof(string))
                     {
                         var stringResult = await response.Content.ReadAsStringAsync(cancellationToken);
                         result = (T)Convert.ChangeType(stringResult, typeof(T));
@@ -213,10 +211,8 @@ public sealed class FigmaHttpClient: IDisposable
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogWarning($"{httpMethod.Method} request to '{_apiUrl}/{fetchUrl}' failed!\n{ex.StackTrace}");
-                _logger.LogError($"{ex.Message}");
-                _logger.LogTrace($"{ex.StackTrace}");
-
+                _logger.LogWarning($"{httpMethod.Method} request to '{_apiUrl}/{fetchUrl}' was canceled.");
+                _logger.LogError(ex, "Operation was canceled.");
                 throw;
             }
             finally
@@ -226,8 +222,8 @@ public sealed class FigmaHttpClient: IDisposable
         }
         else
         {
-            _logger.LogTrace($"Wait 1 minute until next request.");
-            await Task.Delay(TimeSpan.FromMinutes(1));
+            _logger.LogTrace("Rate limit exceeded. Waiting 1 minute until next request.");
+            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
         }
 
         return result;
@@ -442,5 +438,6 @@ public sealed class FigmaHttpClient: IDisposable
         _teamCostRateLimiter.Dispose();
         _versionCostRateLimiter.Dispose();
         _webhookCostRateLimiter.Dispose();
+        _httpClient.Dispose();
     }
 }
