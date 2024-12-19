@@ -65,7 +65,7 @@ public sealed class FigmaHttpClient: IDisposable
             .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (result, timeSpan, retryCount, context) =>
                 {
-                    Console.WriteLine($"Retry {retryCount} due to {result.Result.StatusCode}. Waiting {timeSpan} before next retry.");
+                    _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode}. Waiting {timeSpan} before next retry.");
                 });
 
         if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
@@ -181,7 +181,7 @@ public sealed class FigmaHttpClient: IDisposable
                 HttpResponseMessage response = await _retryPolicy.ExecuteAsync(async () =>
                 {
                     _logger.LogInformation($"Create {httpMethod.Method} request message for '{fetchUrl}'.");
-                    using var request = new HttpRequestMessage(httpMethod, fetchUrl);
+                    using HttpRequestMessage request = new (httpMethod, fetchUrl);
                     request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
 
                     if (content != null)
@@ -201,8 +201,10 @@ public sealed class FigmaHttpClient: IDisposable
                         var stringResult = await response.Content.ReadAsStringAsync(cancellationToken);
                         result = (T)Convert.ChangeType(stringResult, typeof(T));
                     }
-
-                    result = await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+                    else
+                    {
+                        result = await response.Content.ReadFromJsonAsync<T>(cancellationToken);
+                    }
                 }
                 else
                 {
