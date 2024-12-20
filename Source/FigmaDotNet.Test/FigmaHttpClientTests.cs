@@ -15,16 +15,16 @@ using FigmaDotNet.Models.Webhook;
 public class FigmaHttpClientTests
 {
     private readonly FigmaHttpClient _client;
-    private readonly Mock<ILoggerFactory> _loggerFactoryMock;
+    private readonly Mock<ILogger<FigmaHttpClient>> _logger;
     private readonly Mock<IConfiguration> _configurationMock;
 
     public FigmaHttpClientTests()
     {
-        _loggerFactoryMock = new Mock<ILoggerFactory>();
+        _logger = new Mock<ILogger<FigmaHttpClient>>();
         _configurationMock = new Mock<IConfiguration>();
         _configurationMock.Setup(c => c["FIGMA_API_TOKEN"]).Returns("test_token");
 
-        _client = new FigmaHttpClient(_loggerFactoryMock.Object, _configurationMock.Object);
+        _client = new FigmaHttpClient(_logger.Object, _configurationMock.Object);
     }
 
     [Fact]

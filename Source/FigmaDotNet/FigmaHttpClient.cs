@@ -27,7 +27,7 @@ using FigmaDotNet.Models.Webhook;
 
 public sealed class FigmaHttpClient: IDisposable
 {
-    private readonly ILogger<FigmaHttpClient> _logger;
+    private readonly ILogger _logger;
     private readonly HttpClient _httpClient;
     private readonly string _apiToken;
     private readonly string _apiUrl = "https://api.figma.com";
@@ -57,23 +57,23 @@ public sealed class FigmaHttpClient: IDisposable
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
     private const int RETRY_AMOUNT = 10;
 
-    public FigmaHttpClient(ILoggerFactory loggerFactory, IConfiguration configuration = null, string apiKey = null, int retryAmount = RETRY_AMOUNT)
+    public FigmaHttpClient(ILogger logger, IConfiguration configuration = null, string apiKey = null, int retryAmount = RETRY_AMOUNT)
     {
-        _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
+        _logger = logger;
 
         if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
         {
+            _logger.LogInformation($"Using api key from configuration.");
             _apiToken = configuration[CONFIG_NAME_FIGMA_API_TOKEN];
         }
         else if (!string.IsNullOrEmpty(apiKey))
         {
+            _logger.LogInformation($"Using api key from parameter.");
             _apiToken = apiKey;
         }
         else
         {
-            var errorMessage = $"No FIGMA_API_TOKEN was provided! '{CONFIG_NAME_FIGMA_API_TOKEN}'";
-            _logger.LogError(errorMessage);
-            throw new ConfigurationErrorsException(errorMessage);
+            throw new ConfigurationErrorsException($"No FIGMA_API_TOKEN was provided! '{CONFIG_NAME_FIGMA_API_TOKEN}'");
         }
 
         _httpClient = new HttpClient();
@@ -84,7 +84,6 @@ public sealed class FigmaHttpClient: IDisposable
                 {
                     _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode.ToString() ?? "null content"}. Waiting {timeSpan} before next retry.");
                 });
-
 
         _fileCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
         {
