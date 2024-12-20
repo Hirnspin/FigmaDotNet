@@ -57,9 +57,25 @@ public sealed class FigmaHttpClient: IDisposable
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
     private const int RETRY_AMOUNT = 10;
 
-    public FigmaHttpClient(ILoggerFactory loggerFactory, IConfiguration configuration, int retryAmount = RETRY_AMOUNT)
+    public FigmaHttpClient(ILoggerFactory loggerFactory, IConfiguration configuration = null, string apiKey = null, int retryAmount = RETRY_AMOUNT)
     {
         _logger = loggerFactory.CreateLogger<FigmaHttpClient>();
+
+        if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
+        {
+            _apiToken = configuration[CONFIG_NAME_FIGMA_API_TOKEN];
+        }
+        else if (!string.IsNullOrEmpty(apiKey))
+        {
+            _apiToken = apiKey;
+        }
+        else
+        {
+            var errorMessage = $"No FIGMA_API_TOKEN was provided! '{CONFIG_NAME_FIGMA_API_TOKEN}'";
+            _logger.LogError(errorMessage);
+            throw new ConfigurationErrorsException(errorMessage);
+        }
+
         _httpClient = new HttpClient();
         _httpClient.BaseAddress = new Uri(_apiUrl);
         _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode || r.Content == null)
@@ -69,16 +85,6 @@ public sealed class FigmaHttpClient: IDisposable
                     _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode.ToString() ?? "null content"}. Waiting {timeSpan} before next retry.");
                 });
 
-        if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
-        {
-            _apiToken = configuration[CONFIG_NAME_FIGMA_API_TOKEN];
-        }
-        else
-        {
-            var errorMessage = $"No FIGMA_API_TOKEN was provided! '{CONFIG_NAME_FIGMA_API_TOKEN}'";
-            _logger.LogError(errorMessage);
-            throw new ConfigurationErrorsException(errorMessage);
-        }
 
         _fileCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
         {
