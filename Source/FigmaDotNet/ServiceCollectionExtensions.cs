@@ -22,7 +22,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHttpClient<FigmaHttpClient>(client =>
         {
-            client.BaseAddress = new Uri("https://api.figma.com");
+            client.BaseAddress = new Uri(Constants.FIGMA_API_BASE_URL);
             int timeoutMinutes = configuration.GetValue<int>(Constants.CONFIG_NAME_TIMEOUT_MINUTES, Constants.FALLBACK_VALUE_TIMEOUT_MINUTES);
             client.Timeout = TimeSpan.FromMinutes(timeoutMinutes);
         });

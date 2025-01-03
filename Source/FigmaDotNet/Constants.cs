@@ -34,4 +34,9 @@ public class Constants
     /// The configuration key for the retry amount for the HttpClient.
     /// </summary>
     public const int FALLBACK_VALUE_RETRY_AMOUNT = 10;
+
+    /// <summary>
+    /// The base URL for the Figma API.
+    /// </summary>
+    public const string FIGMA_API_BASE_URL = "https://api.figma.com";
 }
