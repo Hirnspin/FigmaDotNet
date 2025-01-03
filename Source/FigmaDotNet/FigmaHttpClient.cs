@@ -1,6 +1,4 @@
-﻿namespace FigmaDotNet;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -25,11 +23,17 @@ using FigmaDotNet.Enums;
 using FigmaDotNet.Models.Response;
 using FigmaDotNet.Models.Webhook;
 
-public sealed class FigmaHttpClient: IDisposable
+namespace FigmaDotNet;
+
+/// <summary>
+/// FigmaHttpClient is a class that handles all the HTTP requests to the Figma API.
+/// </summary>
+public sealed class FigmaHttpClient : IDisposable
 {
     private readonly ILogger _logger;
     private readonly HttpClient _httpClient;
     private readonly string _apiToken;
+    private readonly int _retryAmount;
     private readonly string _apiUrl = "https://api.figma.com";
     // Using rate limiter for each Figma endpoint type, because Figma API is a bit odd. See https://forum.figma.com/t/rest-api-rate-limit/11687/6
     private readonly TokenBucketRateLimiter _fileCostRateLimiter;
@@ -44,7 +48,6 @@ public sealed class FigmaHttpClient: IDisposable
     private readonly TokenBucketRateLimiter _recentFilesCostRateLimiter;
     private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
 
-    private const string CONFIG_NAME_FIGMA_API_TOKEN = "FIGMA_API_TOKEN";
     private const int FILE_COST = 50; // Equates to 120 req/min and 24000 req/day per user
     private const int FILE_IMAGE_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int COMMENT_COST = 20; // Equates to 300 req/min and 60000 req/day per user
@@ -55,31 +58,50 @@ public sealed class FigmaHttpClient: IDisposable
     private const int TEAM_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int SELECTION_COST = 20; // Equates to 300 req/min and 60000 req/day per user
     private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
-    private const int RETRY_AMOUNT = 10;
 
-    public FigmaHttpClient(ILogger logger, IConfiguration configuration = null, string apiKey = null, int retryAmount = RETRY_AMOUNT)
+    /// <summary>
+    /// Constructor for the FigmaHttpClient.
+    /// </summary>
+    /// <param name="httpClient"></param>
+    /// <param name="logger"></param>
+    /// <param name="configuration"></param>
+    /// <param name="apiToken"></param>
+    /// <param name="retryAmount"></param>
+    /// <param name="timeOut"></param>
+    /// <exception cref="ConfigurationErrorsException"></exception>
+    public FigmaHttpClient(HttpClient httpClient, ILogger<FigmaHttpClient> logger, IConfiguration configuration = null, string apiToken = null, int? retryAmount = null, int? timeOut = null)
     {
         _logger = logger;
+        _httpClient = httpClient;
 
-        if (configuration.GetSection(CONFIG_NAME_FIGMA_API_TOKEN).Exists())
+        if (!string.IsNullOrEmpty(apiToken))
         {
-            _logger.LogInformation($"Using api key from configuration.");
-            _apiToken = configuration[CONFIG_NAME_FIGMA_API_TOKEN];
+            _logger.LogInformation($"Using api token from parameter.");
+            _apiToken = apiToken;
         }
-        else if (!string.IsNullOrEmpty(apiKey))
+        else if (configuration.GetSection(Constants.CONFIG_NAME_API_TOKEN).Exists())
         {
-            _logger.LogInformation($"Using api key from parameter.");
-            _apiToken = apiKey;
+            _logger.LogInformation($"Using api token from configuration.");
+            _apiToken = configuration.GetValue<string>(Constants.CONFIG_NAME_API_TOKEN);
         }
         else
         {
-            throw new ConfigurationErrorsException($"No FIGMA_API_TOKEN was provided! '{CONFIG_NAME_FIGMA_API_TOKEN}'");
+            throw new ConfigurationErrorsException($"No ${Constants.CONFIG_NAME_API_TOKEN} was provided!");
         }
 
-        _httpClient = new HttpClient();
-        _httpClient.BaseAddress = new Uri(_apiUrl);
+        if (retryAmount != null)
+        {
+            _logger.LogInformation($"Using retry amount '{retryAmount}' from parameter.");
+            _retryAmount = (int)retryAmount;
+        }
+        else if (configuration.GetSection(Constants.CONFIG_NAME_RETRY_AMOUNT).Exists())
+        {
+            _retryAmount = configuration.GetValue<int>(Constants.CONFIG_NAME_RETRY_AMOUNT, Constants.FALLBACK_VALUE_RETRY_AMOUNT);
+            _logger.LogInformation($"Using retry amount '{_retryAmount}' from configuration.");
+        }
+
         _retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode || r.Content == null)
-            .WaitAndRetryAsync(retryAmount, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            .WaitAndRetryAsync(_retryAmount, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                 (result, timeSpan, retryCount, context) =>
                 {
                     _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode.ToString() ?? "null content"}. Waiting {timeSpan} before next retry.");
@@ -184,7 +206,7 @@ public sealed class FigmaHttpClient: IDisposable
                 HttpResponseMessage response = await _retryPolicy.ExecuteAsync(async () =>
                 {
                     _logger.LogInformation($"Creating {httpMethod.Method} request message for '{fetchUrl}'.");
-                    using var request = new HttpRequestMessage(httpMethod, fetchUrl);
+                    using HttpRequestMessage request = new (httpMethod, fetchUrl);
                     request.Headers.Add("X-FIGMA-TOKEN", _apiToken);
 
                     if (content != null)
@@ -357,7 +379,7 @@ public sealed class FigmaHttpClient: IDisposable
             return null;
         }
 
-        string imageUrl = imgResponse.Images.First(i => i.Key == ids).Value;
+        imgResponse.Images.TryGetValue(ids, out string imageUrl);
 
         return imageUrl;
     }
@@ -444,6 +466,5 @@ public sealed class FigmaHttpClient: IDisposable
         _teamCostRateLimiter.Dispose();
         _versionCostRateLimiter.Dispose();
         _webhookCostRateLimiter.Dispose();
-        _httpClient.Dispose();
     }
 }

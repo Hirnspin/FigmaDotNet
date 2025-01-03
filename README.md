@@ -16,11 +16,21 @@ You have to add a config to your application:
 ```json
 {
   "Values": {
-    "FIGMA_API_TOKEN": "###"
+    "FigmaHttpClient": {
+      "ApiToken": "###",
+      "RetryAmount": 5, // optional
+      "TimeoutMinutes": 5 // optional
+    }
   }
 }
 ```
+
 Check https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens how to get a personal access token in Figma.
+
+The API token can also be applied via the constructor of the `FigmaHttpClient`, as well as the `retryAmount`:
+```csharp
+var figmaHttpClient = new FigmaHttpClient(logger, configuration, apiKey: "###", retryAmount: 5);;
+```
 
 ### Further development topics & missing features
 
@@ -30,6 +40,11 @@ Check https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-acc
 - Rate limit customization in config.
 
 ### Change log
+
+#### v1.3.0:
+- Added `ServiceCollectionExtensions` to extract http client and made it configurable.
+- The configuration key `FIGMA_API_TOKEN` has changed to `FigmaHttpClient:ApiToken`.
+- New configuration key `FigmaHttpClient:TimeoutMinutes` was added to configure http service timeout. Default is 5 minutes.
 
 #### v1.1.1:
 - Extend `FileResponse` with `Branches` and `Document` properties.
