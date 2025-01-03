@@ -23,7 +23,7 @@ public class Constants
     /// <summary>
     /// The configuration key for the retry amount for the HttpClient.
     /// </summary>
-    public const string CONFIG_NAME_RETRY_AMOUNT = $"{CONFIG_NAMESPACE}:TimeoutMinutes";
+    public const string CONFIG_NAME_RETRY_AMOUNT = $"{CONFIG_NAMESPACE}:RetryAmount";
 
     /// <summary>
     /// The default timeout value in minutes for the HttpClient.
