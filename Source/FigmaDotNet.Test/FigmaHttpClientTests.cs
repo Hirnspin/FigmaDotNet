@@ -24,7 +24,7 @@ public class FigmaHttpClientTests
         _httpClientMock = new Mock<HttpClient>();
         _logger = new Mock<ILogger<FigmaHttpClient>>();
         _configurationMock = new Mock<IConfiguration>();
-        _configurationMock.Setup(c => c["FIGMA_API_TOKEN"]).Returns("test_token");
+        _configurationMock.Setup(c => c[Constants.CONFIG_NAME_API_TOKEN]).Returns("test_token");
 
         _client = new FigmaHttpClient(_httpClientMock.Object, _logger.Object, _configurationMock.Object);
     }
