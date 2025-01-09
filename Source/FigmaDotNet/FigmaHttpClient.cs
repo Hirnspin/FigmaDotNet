@@ -34,30 +34,88 @@ public sealed class FigmaHttpClient : IDisposable
     private readonly HttpClient _httpClient;
     private readonly string _apiToken;
     private readonly int _retryAmount;
-    private readonly string _apiUrl = "https://api.figma.com";
     // Using rate limiter for each Figma endpoint type, because Figma API is a bit odd. See https://forum.figma.com/t/rest-api-rate-limit/11687/6
-    private readonly TokenBucketRateLimiter _fileCostRateLimiter;
-    private readonly TokenBucketRateLimiter _imageCostRateLimiter;
-    private readonly TokenBucketRateLimiter _webhookCostRateLimiter;
-    private readonly TokenBucketRateLimiter _versionCostRateLimiter;
-    private readonly TokenBucketRateLimiter _commentCostRateLimiter;
-    private readonly TokenBucketRateLimiter _teamCostRateLimiter;
-    private readonly TokenBucketRateLimiter _projectCostRateLimiter;
-    private readonly TokenBucketRateLimiter _fileImageCostRateLimiter;
-    private readonly TokenBucketRateLimiter _selectionCostRateLimiter;
-    private readonly TokenBucketRateLimiter _recentFilesCostRateLimiter;
+    private readonly TokenBucketRateLimiter _fileCostRateLimiter = new (
+        new ()
+        {
+            TokenLimit = 24000,
+            TokensPerPeriod = 120,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _imageCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 6000,
+            TokensPerPeriod = 30,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        }); 
+    private readonly TokenBucketRateLimiter _fileImageCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 60000,
+            TokensPerPeriod = 300,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _webhookCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 60000,
+            TokensPerPeriod = 300,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _versionCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 12000,
+            TokensPerPeriod = 60,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _commentCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 60000,
+            TokensPerPeriod = 300,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _teamCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 60000,
+            TokensPerPeriod = 300,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _projectCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 60000,
+            TokensPerPeriod = 300,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _selectionCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 60000,
+            TokensPerPeriod = 300,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
+    private readonly TokenBucketRateLimiter _recentFilesCostRateLimiter = new(
+        new()
+        {
+            TokenLimit = 12000,
+            TokensPerPeriod = 600,
+            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+            AutoReplenishment = true
+        });
     private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
-
-    private const int FILE_COST = 50; // Equates to 120 req/min and 24000 req/day per user
-    private const int FILE_IMAGE_COST = 20; // Equates to 300 req/min and 60000 req/day per user
-    private const int COMMENT_COST = 20; // Equates to 300 req/min and 60000 req/day per user
-    private const int IMAGE_COST = 200; // Equates to 30 req/min and 6000 req/day per user
-    private const int VERSION_COST = 100; // Equates to 60 req/min and 12000 req/day per user
-    private const int PROJECT_COST = 20; // Equates to 300 req/min and 60000 req/day per user
-    private const int WEBHOOK_COST = 20; // Equates to 300 req/min and 60000 req/day per user
-    private const int TEAM_COST = 20; // Equates to 300 req/min and 60000 req/day per user
-    private const int SELECTION_COST = 20; // Equates to 300 req/min and 60000 req/day per user
-    private const int RECENT_FILES_COST = 10; // Equates to 600 req/min and 120000 req/day per user
 
     /// <summary>
     /// Constructor for the FigmaHttpClient.
@@ -106,86 +164,6 @@ public sealed class FigmaHttpClient : IDisposable
                 {
                     _logger.LogInformation($"Retry {retryCount} due to {result.Result.StatusCode.ToString() ?? "null content"}. Waiting {timeSpan} before next retry.");
                 });
-
-        _fileCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = FILE_COST,
-            TokensPerPeriod = FILE_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _imageCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = IMAGE_COST,
-            TokensPerPeriod = IMAGE_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _versionCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = VERSION_COST,
-            TokensPerPeriod = VERSION_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _commentCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = COMMENT_COST,
-            TokensPerPeriod = COMMENT_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _webhookCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = WEBHOOK_COST,
-            TokensPerPeriod = WEBHOOK_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _teamCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = TEAM_COST,
-            TokensPerPeriod = TEAM_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _projectCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = PROJECT_COST,
-            TokensPerPeriod = PROJECT_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _fileImageCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = FILE_IMAGE_COST,
-            TokensPerPeriod = FILE_IMAGE_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _selectionCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = SELECTION_COST,
-            TokensPerPeriod = SELECTION_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
-
-        _recentFilesCostRateLimiter = new TokenBucketRateLimiter(new TokenBucketRateLimiterOptions
-        {
-            TokenLimit = RECENT_FILES_COST,
-            TokensPerPeriod = RECENT_FILES_COST,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            AutoReplenishment = true
-        });
     }
 
     private async Task<T> RateLimitedFigmaApiCallAsync<T>(string fetchUrl, TokenBucketRateLimiter rateLimiter, HttpMethod httpMethod = null, HttpContent content = null, CancellationToken cancellationToken = default)
@@ -239,7 +217,7 @@ public sealed class FigmaHttpClient : IDisposable
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogWarning($"{httpMethod.Method} request to '{_apiUrl}/{fetchUrl}' was canceled.");
+                _logger.LogWarning($"{httpMethod.Method} request to '{Constants.FIGMA_API_BASE_URL}/{fetchUrl}' was canceled.");
                 _logger.LogError(ex, "Operation was canceled.");
                 throw;
             }
