@@ -482,7 +482,7 @@ public sealed class FigmaHttpClient : IDisposable
     /// <param name="devResource"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<CreateDevResourceResponse> CreateDevResourceAsync(string fileKey, DevResource payload, CancellationToken cancellationToken = default)
+    public async Task<CreateDevResourceResponse> CreateDevResourceAsync(string fileKey, DevResourceCreatePayload payload, CancellationToken cancellationToken = default)
     {
         string fetchUrl = $"/v1/dev_resources";
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
