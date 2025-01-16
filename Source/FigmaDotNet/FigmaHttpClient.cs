@@ -22,6 +22,7 @@ using Polly.Retry;
 using FigmaDotNet.Enums;
 using FigmaDotNet.Models.Response;
 using FigmaDotNet.Models.Webhook;
+using FigmaDotNet.Models;
 
 namespace FigmaDotNet;
 
@@ -430,6 +431,80 @@ public sealed class FigmaHttpClient : IDisposable
         var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _webhookCostRateLimiter, HttpMethod.Post, content, cancellationToken);
 
         _logger.LogInformation($"Webhook was created: {result}");
+    }
+
+    /// <summary>
+    /// Get dev resources in a file.
+    /// </summary>
+    /// <param name="fileKey"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<GetDevResourceResponse> GetDevResourcesAsync(string fileKey, CancellationToken cancellationToken = default)
+    {
+        string fetchUrl = $"/v1/files/{fileKey}/dev_resources";
+        var result = await RateLimitedFigmaApiCallAsync<GetDevResourceResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Bulk create dev resources across multiple files.
+    ///
+    /// Dev resources that are successfully created will show up in the links_created array in the response.
+    /// 
+    /// If there are any dev resources that cannot be created, you may still get a 200 response.These resources will show up in the errors array. Some reasons a dev resource cannot be created include:
+    /// - Resource points to a file_key that cannot be found.
+    /// - The node already has the maximum of 10 dev resources.
+    /// - Another dev resource for the node has the same url.
+    /// </summary>
+    /// <param name="fileKey"></param>
+    /// <param name="devResource"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<PostDevResourceResponse> PostDevResourceAsync(string fileKey, DevResource devResource, CancellationToken cancellationToken = default)
+    {
+        string fetchUrl = $"/v1/files/{fileKey}/dev_resources";
+        var content = new StringContent(JsonSerializer.Serialize(devResource), Encoding.UTF8, "application/json");
+        var result = await RateLimitedFigmaApiCallAsync<PostDevResourceResponse>(fetchUrl, _fileCostRateLimiter, HttpMethod.Post, content, cancellationToken);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Bulk update dev resources across multiple files.
+    ///
+    /// Ids for dev resources that are successfully updated will show up in the links_updated array in the response.
+    ///
+    /// If there are any dev resources that cannot be updated, you may still get a 200 response.These resources will show up in the errors array.
+    /// </summary>
+    /// <param name="fileKey"></param>
+    /// <param name="devResourceId"></param>
+    /// <param name="devResource"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<PutDevResourceResponse> PutDevResourceAsync(string fileKey, string devResourceId, DevResource devResource, CancellationToken cancellationToken = default)
+    {
+        string fetchUrl = $"/v1/files/{fileKey}/dev_resources/{devResourceId}";
+        var content = new StringContent(JsonSerializer.Serialize(devResource), Encoding.UTF8, "application/json");
+        var result = await RateLimitedFigmaApiCallAsync<PutDevResourceResponse>(fetchUrl, _fileCostRateLimiter, HttpMethod.Put, content, cancellationToken);
+        
+        return result;
+    }
+
+    /// <summary>
+    /// Delete a dev resources from a file.
+    /// </summary>
+    /// <param name="fileKey"></param>
+    /// <param name="devResourceId"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async Task<bool> DeleteDevResourceAsync(string fileKey, string devResourceId, CancellationToken cancellationToken = default)
+    {
+        string fetchUrl = $"/v1/files/{fileKey}/dev_resources/{devResourceId}";
+        var result = await RateLimitedFigmaApiCallAsync<string>(fetchUrl, _fileCostRateLimiter, HttpMethod.Delete, cancellationToken: cancellationToken);
+
+        _logger.LogInformation($"Deleted dev resource with ID: '{devResourceId}'");
+        return true;
     }
 
     public void Dispose()

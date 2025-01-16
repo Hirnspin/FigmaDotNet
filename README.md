@@ -41,6 +41,9 @@ var figmaHttpClient = new FigmaHttpClient(logger, configuration, apiKey: "###", 
 
 ### Change log
 
+#### v1.4.0:
+- Added endpoints for [Dev Resources](https://www.figma.com/developers/api#dev-resources).
+
 #### v1.3.0:
 - Added `ServiceCollectionExtensions` to extract http client and made it configurable.
 - The configuration key `FIGMA_API_TOKEN` has changed to `FigmaHttpClient:ApiToken`.
