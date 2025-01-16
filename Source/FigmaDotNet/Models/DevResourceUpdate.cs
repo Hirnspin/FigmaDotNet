@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 
 namespace FigmaDotNet.Models;
 
@@ -8,32 +9,20 @@ namespace FigmaDotNet.Models;
 public class DevResourceUpdate
 {
     /// <summary>
-    /// The unique identifier of the resource.
+    /// Unique identifier of the dev resource
     /// </summary>
+    [JsonPropertyName("id")]
     public string Id { get; set; }
 
     /// <summary>
-    /// The name of the resource.
+    /// The name of the dev resource.
     /// </summary>
+    [JsonPropertyName("name")]
     public string Name { get; set; }
 
     /// <summary>
-    /// The description of the resource.
+    /// The URL of the dev resource.
     /// </summary>
-    public string Description { get; set; }
-
-    /// <summary>
-    /// The type of the resource.
-    /// </summary>
-    public string ResourceType { get; set; }
-
-    /// <summary>
-    /// The URL of the resource.
-    /// </summary>
+    [JsonPropertyName("url")]
     public string Url { get; set; }
-
-    /// <summary>
-    /// The date and time when the resource was last updated.
-    /// </summary>
-    public DateTime UpdatedAt { get; set; }
 }

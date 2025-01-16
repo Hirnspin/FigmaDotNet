@@ -1,4 +1,6 @@
-﻿namespace FigmaDotNet.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace FigmaDotNet.Models;
 
 /// <summary>
 /// Payload to create a dev resource in a file.
@@ -6,22 +8,26 @@
 public class DevResourceCreate
 {
     /// <summary>
-    /// The name of the resource.
+    /// The name of the dev resource.
     /// </summary>
+    [JsonPropertyName("name")]
     public string Name { get; set; }
 
     /// <summary>
-    /// The description of the resource.
+    /// The file key where the dev resource belongs.
     /// </summary>
-    public string Description { get; set; }
+    [JsonPropertyName("file_key")]
+    public string FileKey { get; set; }
 
     /// <summary>
-    /// The type of the resource.
+    /// The target node to attach the dev resource to.
     /// </summary>
-    public string ResourceType { get; set; }
+    [JsonPropertyName("node_id")]
+    public string NodeId { get; set; }
 
     /// <summary>
-    /// The URL of the resource.
+    /// The URL of the dev resource.
     /// </summary>
+    [JsonPropertyName("url")]
     public string Url { get; set; }
 }

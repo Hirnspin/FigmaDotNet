@@ -436,15 +436,36 @@ public sealed class FigmaHttpClient : IDisposable
     /// <summary>
     /// Get dev resources in a file.
     /// </summary>
-    /// <param name="fileKey"></param>
+    /// <param name="fileKey">
+    /// The file to get the dev resources from. This must be a main file key, not a branch key.
+    /// </param>
+    /// <param name="nodeIds">
+    /// Comma separated list of nodes that you care about in the document. If specified, only dev resources attached to these nodes will be returned. If not specified, all dev resources in the file will be returned.
+    /// </param>
     /// <param name="cancellationToken"></param>
-    /// <returns></returns>
-    public async Task<GetDevResourceResponse> GetDevResourcesAsync(string fileKey, CancellationToken cancellationToken = default)
+    /// <returns>GetDevResourceResponse</returns>
+    public async Task<GetDevResourceResponse> GetDevResourcesAsync(string fileKey, string nodeIds, CancellationToken cancellationToken = default)
     {
         string fetchUrl = $"/v1/files/{fileKey}/dev_resources";
         var result = await RateLimitedFigmaApiCallAsync<GetDevResourceResponse>(fetchUrl, _fileCostRateLimiter, cancellationToken: cancellationToken);
 
         return result;
+    }
+
+    /// <summary>
+    /// Get dev resources in a file.
+    /// </summary>
+    /// <param name="fileKey">
+    /// The file to get the dev resources from. This must be a main file key, not a branch key.
+    /// </param>
+    /// <param name="nodeIds">
+    /// List of nodes that you care about in the document. If specified, only dev resources attached to these nodes will be returned. If not specified, all dev resources in the file will be returned.
+    /// </param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>GetDevResourceResponse</returns>
+    public async Task<GetDevResourceResponse> GetDevResourcesAsync(string fileKey, IEnumerable<string> nodeIds, CancellationToken cancellationToken = default)
+    {
+        return await GetDevResourcesAsync(fileKey, string.Join(',', nodeIds), cancellationToken);
     }
 
     /// <summary>
@@ -461,11 +482,11 @@ public sealed class FigmaHttpClient : IDisposable
     /// <param name="devResource"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<PostDevResourceResponse> PostDevResourceAsync(string fileKey, DevResource devResource, CancellationToken cancellationToken = default)
+    public async Task<CreateDevResourceResponse> CreateDevResourceAsync(string fileKey, DevResource payload, CancellationToken cancellationToken = default)
     {
-        string fetchUrl = $"/v1/files/{fileKey}/dev_resources";
-        var content = new StringContent(JsonSerializer.Serialize(devResource), Encoding.UTF8, "application/json");
-        var result = await RateLimitedFigmaApiCallAsync<PostDevResourceResponse>(fetchUrl, _fileCostRateLimiter, HttpMethod.Post, content, cancellationToken);
+        string fetchUrl = $"/v1/dev_resources";
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        var result = await RateLimitedFigmaApiCallAsync<CreateDevResourceResponse>(fetchUrl, _fileCostRateLimiter, HttpMethod.Post, content, cancellationToken);
 
         return result;
     }
@@ -482,11 +503,11 @@ public sealed class FigmaHttpClient : IDisposable
     /// <param name="devResource"></param>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
-    public async Task<PutDevResourceResponse> PutDevResourceAsync(string fileKey, string devResourceId, DevResource devResource, CancellationToken cancellationToken = default)
+    public async Task<ChangeDevResourceResponse> ChangeDevResourceAsync(DevResourceUpdatePayload payload, CancellationToken cancellationToken = default)
     {
-        string fetchUrl = $"/v1/files/{fileKey}/dev_resources/{devResourceId}";
-        var content = new StringContent(JsonSerializer.Serialize(devResource), Encoding.UTF8, "application/json");
-        var result = await RateLimitedFigmaApiCallAsync<PutDevResourceResponse>(fetchUrl, _fileCostRateLimiter, HttpMethod.Put, content, cancellationToken);
+        string fetchUrl = $"/v1/dev_resources";
+        var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        var result = await RateLimitedFigmaApiCallAsync<ChangeDevResourceResponse>(fetchUrl, _fileCostRateLimiter, HttpMethod.Put, content, cancellationToken);
         
         return result;
     }

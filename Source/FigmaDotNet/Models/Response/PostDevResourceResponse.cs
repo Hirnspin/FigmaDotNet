@@ -3,16 +3,16 @@ using System.Text.Json.Serialization;
 
 namespace FigmaDotNet.Models.Response;
 
-public class PostDevResourceResponse : FigmaResponse
+public class CreateDevResourceResponse : FigmaResponse
 {
     [JsonPropertyName("links_created")]
     public IEnumerable<DevResource> LinksCreated { get; set; }
 
     [JsonPropertyName("errors")]
-    public IEnumerable<PostDevResourceError> Errors { get; set; }
+    public IEnumerable<CreateDevResourceError> Errors { get; set; }
 }
 
-public class PostDevResourceError
+public class CreateDevResourceError
 {
     [JsonPropertyName("file_key")]
     public string FileKey { get; set; }

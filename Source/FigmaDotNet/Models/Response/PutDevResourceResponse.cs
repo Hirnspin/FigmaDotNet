@@ -3,16 +3,16 @@ using System.Text.Json.Serialization;
 
 namespace FigmaDotNet.Models.Response;
 
-public class PutDevResourceResponse : FigmaResponse
+public class ChangeDevResourceResponse : FigmaResponse
 {
     [JsonPropertyName("links_updated")]
     public IEnumerable<string> LinksUpdated { get; set; }
 
     [JsonPropertyName("errors")]
-    public IEnumerable<PutDevResourceError> Errors { get; set; }
+    public IEnumerable<ChangeDevResourceError> Errors { get; set; }
 }
 
-public class PutDevResourceError
+public class ChangeDevResourceError
 {
     [JsonPropertyName("id")]
     public string Id { get; set; }
